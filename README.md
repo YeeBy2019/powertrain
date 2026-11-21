@@ -1,6 +1,6 @@
 <div align="center">
 
-<p><b>English</b> &nbsp;·&nbsp; <a href="./README.zh-CN.md">简体中文</a></p>
+<p><b>English</b> &nbsp;·&nbsp; <a href="./README.zh-CN.md">简体中文</a> &nbsp;·&nbsp; <a href="https://yeeby2019.github.io/powertrain/">Live demo</a></p>
 
 <a href="#quick-start"><img src="media/preview.gif" width="100%" alt="Powertrain: an engine-assembly digital twin — a fly-through of the hall, a live assembly line, an AGV lifting a V8 core bin off a rack, and the parts store"></a>
 

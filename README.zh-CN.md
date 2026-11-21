@@ -1,6 +1,6 @@
 <div align="center">
 
-<p><a href="./README.md">English</a> &nbsp;·&nbsp; <b>简体中文</b></p>
+<p><a href="./README.md">English</a> &nbsp;·&nbsp; <b>简体中文</b> &nbsp;·&nbsp; <a href="https://yeeby2019.github.io/powertrain/">在线预览</a></p>
 
 <a href="#快速开始"><img src="media/preview.gif" width="100%" alt="动力总成装配车间数字孪生：车间总览、实时运行的装配线、AGV 从货架取下 V8 发动机核心料箱、零件库"></a>
 
