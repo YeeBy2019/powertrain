@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>Powertrain · Engine Assembly Digital Twin</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <canvas id="world"></canvas>
+    <div id="marks"></div>
+    <header id="brand">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2a2 2 0 0 1 2 2l.2 1.1 1.4.6 1-.8a2 2 0 0 1 2.8 0l.8.8a2 2 0 0 1 0 2.8l-.8 1 .6 1.4L21 12a2 2 0 0 1 0 4l-1.1.2-.6 1.4.8 1a2 2 0 0 1 0 2.8l-.8.8a2 2 0 0 1-2.8 0l-1-.8-1.4.6L14 23a2 2 0 0 1-4 0l-.2-1.1-1.4-.6-1 .8a2 2 0 0 1-2.8 0l-.8-.8a2 2 0 0 1 0-2.8l.8-1-.6-1.4L3 16a2 2 0 0 1 0-4l1.1-.2.6-1.4-.8-1a2 2 0 0 1 0-2.8l.8-.8a2 2 0 0 1 2.8 0l1 .8 1.4-.6L12 2zm0 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" fill="currentColor" /></svg>
+      <span>Powertrain</span>
+    </header>
+    <section id="kpis"></section>
+    <aside id="card" hidden></aside>
+    <footer id="dock">
+      <button id="home" title="Overview (Esc)"></button>
+      <button id="pause" title="Pause (Space)"></button>
+      <div id="speeds"></div>
+      <span id="clock"></span>
+    </footer>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

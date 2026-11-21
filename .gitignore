@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local dev / debug leftovers
+*.log
+.DS_Store
+Thumbs.db
+tools/debug-probe.png
+
+# Recording intermediates (preview.gif in media/ is committed)
+media/frames/
