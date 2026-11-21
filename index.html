@@ -8,6 +8,38 @@
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
+    <div id="loader" role="status" aria-live="polite">
+      <div class="loader-panel">
+        <div class="loader-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2l.2 1.1 1.4.6 1-.8a2 2 0 0 1 2.8 0l.8.8a2 2 0 0 1 0 2.8l-.8 1 .6 1.4L21 12a2 2 0 0 1 0 4l-1.1.2-.6 1.4.8 1a2 2 0 0 1 0 2.8l-.8.8a2 2 0 0 1-2.8 0l-1-.8-1.4.6L14 23a2 2 0 0 1-4 0l-.2-1.1-1.4-.6-1 .8a2 2 0 0 1-2.8 0l-.8-.8a2 2 0 0 1 0-2.8l.8-1-.6-1.4L3 16a2 2 0 0 1 0-4l1.1-.2.6-1.4-.8-1a2 2 0 0 1 0-2.8l.8-.8a2 2 0 0 1 2.8 0l1 .8 1.4-.6L12 2zm0 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" fill="currentColor" /></svg>
+        </div>
+        <h1 class="loader-title">POWERTRAIN</h1>
+        <p class="loader-subtitle">ENGINE ASSEMBLY DIGITAL TWIN</p>
+
+        <div class="loader-progress-head">
+          <span id="loader-phase">INITIALIZING</span>
+          <span id="loader-percent">0%</span>
+        </div>
+        <div class="loader-track"><i id="loader-bar"></i></div>
+
+        <div class="loader-stage-head">
+          <span id="loader-stage">Preparing assets</span>
+          <span id="loader-count">0 / 34</span>
+        </div>
+        <div class="loader-track loader-track-thin"><i id="loader-stage-bar"></i></div>
+
+        <ul class="loader-stages">
+          <li data-stage="environment"><span class="loader-dot"></span><span>Environment</span><span class="loader-num">0/4</span></li>
+          <li data-stage="structure"><span class="loader-dot"></span><span>Building shell</span><span class="loader-num">0/7</span></li>
+          <li data-stage="equipment"><span class="loader-dot"></span><span>Assembly equipment</span><span class="loader-num">0/13</span></li>
+          <li data-stage="logistics"><span class="loader-dot"></span><span>Logistics fleet</span><span class="loader-num">0/6</span></li>
+          <li data-stage="engines"><span class="loader-dot"></span><span>Engine cores</span><span class="loader-num">0/4</span></li>
+          <li data-stage="compile"><span class="loader-dot"></span><span>Compile shaders</span><span class="loader-num"></span></li>
+        </ul>
+
+        <p class="loader-item" id="loader-item">Starting&hellip;</p>
+      </div>
+    </div>
     <canvas id="world"></canvas>
     <div id="marks"></div>
     <header id="brand">

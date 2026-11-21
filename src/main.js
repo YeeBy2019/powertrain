@@ -8,8 +8,40 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js'
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import { caseOffset, computeKpis, createSim, remainingPathPoints, stepSim, STEP_SECONDS } from './sim.js'
-import { buildWorld, composeMatrix } from './world.js'
+import { buildWorld, composeMatrix, preloadAssets } from './world.js'
 import { CONVEYOR_TOP, EMPTY_STACK, OUTBOUND_DROP_Z, STAND_TOP } from './layout.js'
+
+// ---------- Loading screen ----------
+// The markup is static so the screen is visible before this module even executes.
+const loaderElement = document.getElementById('loader')
+const loaderPhase = document.getElementById('loader-phase')
+const loaderPercent = document.getElementById('loader-percent')
+const loaderBar = document.getElementById('loader-bar')
+const loaderStage = document.getElementById('loader-stage')
+const loaderCount = document.getElementById('loader-count')
+const loaderStageBar = document.getElementById('loader-stage-bar')
+const loaderItem = document.getElementById('loader-item')
+const loaderRows = new Map([...document.querySelectorAll('.loader-stages li')].map((row) => [row.dataset.stage, row]))
+const STAGE_KEYS = ['environment', 'structure', 'equipment', 'logistics', 'engines', 'compile']
+let stageIndex = -1
+
+function showProgress({ key, label, loaded, total, overall, item }) {
+  loaderPhase.textContent = key === 'ready' ? 'FINALIZING' : 'LOADING ASSETS'
+  loaderPercent.textContent = `${Math.round(overall * 100)}%`
+  loaderBar.style.width = `${overall * 100}%`
+  loaderStage.textContent = label
+  loaderCount.textContent = total ? `${loaded} / ${total}` : ''
+  loaderStageBar.style.width = total ? `${(loaded / total) * 100}%` : '0%'
+  loaderItem.textContent = item ? `Loading ${item}` : key === 'compile' ? 'Compiling shader variants\u2026' : 'Transferring\u2026'
+  const index = STAGE_KEYS.indexOf(key)
+  if (index > stageIndex) stageIndex = index
+  STAGE_KEYS.forEach((stageKey, position) => {
+    const row = loaderRows.get(stageKey)
+    row.classList.toggle('active', key !== 'ready' && stageKey === key)
+    row.classList.toggle('done', key === 'ready' || position < stageIndex)
+    if (stageKey === key && total) row.querySelector('.loader-num').textContent = `${loaded}/${total}`
+  })
+}
 
 const parameters = new URLSearchParams(location.search)
 const PRE_ROLL_SECONDS = Number(parameters.get('preroll') ?? 900)
@@ -94,6 +126,7 @@ for (const z of [3.6, -3.6]) {
   scene.add(bayLamp, bayLamp.target)
 }
 
+await preloadAssets(showProgress)
 const world = await buildWorld(scene, renderer, sim)
 
 // Post: ambient occlusion + bloom + grade. Tone mapping is done by three.js's renderer (see above),
@@ -120,6 +153,14 @@ composer.addPass(new EffectPass(
   new VignetteEffect({ offset: 0.3, darkness: 0.55 }),
   new SMAAEffect(),
 ))
+
+// Shader compilation is the last visible pause on first load. Render one frame while the
+// loading screen still covers the canvas, so the first visible frame is already warm.
+showProgress({ key: 'compile', label: 'Compile shaders', loaded: 0, total: 0, overall: 0.99, item: '' })
+await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+composer.render(0)
+showProgress({ key: 'ready', label: 'Ready', loaded: 1, total: 1, overall: 1, item: '' })
+loaderElement.classList.add('done')
 
 // ---------- Path lines ----------
 

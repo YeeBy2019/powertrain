@@ -11,6 +11,120 @@ import {
 } from './layout.js'
 
 const BASE = import.meta.env.BASE_URL
+
+// Load the scene's assets before assembling it. Files are grouped by purpose so the loading
+// screen can report real per-stage counts, and each stage is fetched with a small worker pool
+// instead of one-at-a-time awaits. Everything lands in the existing caches, so buildWorld()
+// below keeps its original logic and only hits warm caches.
+const ASSET_STAGES = [
+  {
+    key: 'environment',
+    label: 'Environment',
+    files: ['env/empty_warehouse_01_2k.hdr', 'textures/floor_diff.jpg', 'textures/floor_rough.jpg', 'textures/floor_nor_gl.jpg'],
+    models: [],
+  },
+  {
+    key: 'structure',
+    label: 'Building shell',
+    files: [],
+    models: [
+      'rack_large_empty_a01', 'structure_wall_straight_a01', 'conveyor_belt_a08',
+      'barrier_fence_metal_a02', 'barrier_gate_safetyDock_a02', 'structure_beam_a01',
+      'lighting_overheadLed_lightPanel_a01',
+    ],
+  },
+  {
+    key: 'equipment',
+    label: 'Assembly equipment',
+    files: [],
+    models: [
+      'robotic_system_arm_b01', 'testingTool_brake_testing_station_a01',
+      'testingTool_alignment_machine_a01', 'testingTool_emission_tester_a01',
+      'workstation_factory_a01', 'carFrame_car_frame_assembled_a01',
+      'drivetrain_transmission_auto_a01', 'drivetrain_differential_a01',
+      'engineComponent_crankshaft_b01', 'engineComponent_cylinder_head_a01',
+      'engineComponent_turbocompressor_a01', 'wheelAssembly_tire_a01',
+      'lighting_overheadLed_hexGrid_a01',
+    ],
+  },
+  {
+    key: 'logistics',
+    label: 'Logistics fleet',
+    files: [],
+    models: [
+      'ladder_rolling_yellow_a02', 'sign_warning_a04', 'bin_waste_a01',
+      'pallet_assembly_b01', 'pallet_block_a05', 'vehicle_forklift_red_b01',
+    ],
+  },
+  {
+    key: 'engines',
+    label: 'Engine cores',
+    files: [],
+    models: [
+      'engineAssembly_v8_engine_a01', 'engineAssembly_v6_engine_a01',
+      'engineAssembly_v12_engine_a01', 'engineAssembly_electric_engine_a01',
+    ],
+  },
+]
+
+const TOTAL_ASSETS = ASSET_STAGES.reduce((sum, stage) => sum + stage.files.length + stage.models.length, 0)
+const PRELOAD_CONCURRENCY = 5
+let cachedEnvironment = null
+let preloadPromise = null
+
+async function loadFile(path) {
+  const url = `${BASE}${path}`
+  if (path.endsWith('.hdr')) {
+    cachedEnvironment = await new RGBELoader().loadAsync(url)
+  } else {
+    // buildFloor() creates its own textured material afterwards; this fetch just makes
+    // the browser cache warm so that second request resolves immediately.
+    await new THREE.TextureLoader().loadAsync(url)
+  }
+}
+
+export function preloadAssets(onProgress = () => {}) {
+  if (!preloadPromise) {
+    preloadPromise = (async () => {
+      let overallDone = 0
+      for (const stage of ASSET_STAGES) {
+        const items = [
+          ...stage.files.map((path) => ({ label: path.split('/').pop(), load: () => loadFile(path) })),
+          ...stage.models.map((name) => ({ label: `${name}.glb`, load: () => loadModel(name) })),
+        ]
+        let stageDone = 0
+        const report = (item) => onProgress({
+          key: stage.key,
+          label: stage.label,
+          loaded: stageDone,
+          total: items.length,
+          overall: overallDone / TOTAL_ASSETS,
+          item,
+        })
+        report('')
+        let cursor = 0
+        const worker = async () => {
+          while (cursor < items.length) {
+            const current = items[cursor++]
+            try {
+              await current.load()
+            } catch (error) {
+              // Optional set dressing is allowed to fail, same as safePlace() below.
+              console.warn(`asset ${current.label} unavailable`, error)
+            }
+            stageDone++
+            overallDone++
+            report(current.label)
+          }
+        }
+        await Promise.all(Array.from({ length: Math.min(PRELOAD_CONCURRENCY, items.length) }, worker))
+      }
+      onProgress({ key: 'ready', label: 'Ready', loaded: TOTAL_ASSETS, total: TOTAL_ASSETS, overall: 1, item: '' })
+    })()
+  }
+  return preloadPromise
+}
+
 const loader = new GLTFLoader()
 loader.setMeshoptDecoder(MeshoptDecoder)
 const modelCache = new Map()
@@ -431,7 +545,7 @@ function buildStand(parent, x, z, length = 1.1) {
 }
 
 export async function buildWorld(scene, renderer, sim) {
-  const environmentTexture = await new RGBELoader().loadAsync(`${BASE}env/empty_warehouse_01_2k.hdr`)
+  const environmentTexture = cachedEnvironment ?? await new RGBELoader().loadAsync(`${BASE}env/empty_warehouse_01_2k.hdr`)
   environmentTexture.mapping = THREE.EquirectangularReflectionMapping
   scene.environment = environmentTexture
   scene.environmentIntensity = 0.42
