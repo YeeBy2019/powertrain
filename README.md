@@ -2,7 +2,7 @@
 
 <p><b>English</b> &nbsp;·&nbsp; <a href="./README.zh-CN.md">简体中文</a> &nbsp;·&nbsp; <a href="https://yeeby2019.github.io/powertrain/">Live demo</a></p>
 
-<a href="#quick-start"><img src="media/preview.gif" width="100%" alt="Powertrain: an engine-assembly digital twin — a fly-through of the hall, a live assembly line, an AGV lifting a V8 core bin off a rack, and the parts store"></a>
+<a href="#quick-start"><img src="media/preview.gif" width="100%" alt="Powertrain: an engine-assembly digital twin — a natural-language console dispatches an AGV to collect a V8 core from a rack while the hall and assembly lines run"></a>
 
 <h1>Powertrain</h1>
 
@@ -52,8 +52,9 @@ and steel-blue palette. The README structure follows
 | GPU / VRAM | WebGL 2 capable GPU with 2 GB VRAM; integrated GPUs should use `?quality=low` | Discrete GPU with 4 GB+ VRAM |
 | Disk space | ~300 MB (206 MB of models plus dependencies) | — |
 
-The running app needs no backend and no internet connection once the assets are present. WebGL 2 is
-required; WebGL 1 is not supported.
+The core digital twin needs no backend and no internet connection once the assets are present. The
+optional natural-language console works offline in Demo mode by default; Live mode needs your own
+API key and is intended for local development only. WebGL 2 is required; WebGL 1 is not supported.
 
 ## Quick start
 
@@ -75,6 +76,20 @@ All URL options are optional:
 | `?seed=<integer>` | choose a different event sequence (default 7) |
 | `?quality=low` | lower DPR, shadow size, AO resolution and framebuffer precision |
 | `?dpr=<number>` | pin the device pixel ratio, e.g. `?dpr=1` |
+| `?llm=demo\|live` | force the console mode for this session (Demo needs no key) |
+
+## Natural-language console (local only)
+
+The speech-bubble button in the top right opens a control console. Type plain English and the hall
+responds — dispatch an AGV for a core, ask for the live figures, focus the camera on a unit, return
+to the overview, or change the simulation speed. Built-in examples are one click away.
+
+It starts in **Demo** mode, which needs no key or network and recognises the common commands. For
+real model-driven control, open the settings gear, choose a provider (OpenAI, DeepSeek, or any
+OpenAI-compatible endpoint), enter your API key, and switch to **Live**. The key stays in your
+browser and is forwarded only through the local dev server; it is never written to a file or sent
+from the hosted demo. This console is a local development feature and is not part of the GitHub
+Pages build.
 
 | Symptom | Fix |
 | --- | --- |
