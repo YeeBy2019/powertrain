@@ -2,7 +2,7 @@
 
 <p><a href="./README.md">English</a> &nbsp;·&nbsp; <b>简体中文</b> &nbsp;·&nbsp; <a href="https://yeeby2019.github.io/powertrain/">在线预览</a></p>
 
-<a href="#快速开始"><img src="media/preview.gif" width="100%" alt="动力总成装配车间数字孪生：车间总览、实时运行的装配线、AGV 从货架取下 V8 发动机核心料箱、零件库"></a>
+<a href="#快速开始"><img src="media/preview.gif" width="100%" alt="动力总成装配车间数字孪生：自然语言控制台派 AGV 从货架取 V8 发动机核心料箱，车间与装配线实时运行"></a>
 
 <h1>Powertrain</h1>
 
@@ -45,7 +45,7 @@
 | GPU / 显存 | 支持 WebGL 2、2 GB 显存；集成显卡请使用 `?quality=low` | 独立显卡，4 GB 及以上显存 |
 | 磁盘空间 | 约 300 MB（206 MB 模型 + 依赖） | — |
 
-素材就绪后，应用无需后端、也无需联网。必须使用 WebGL 2，不支持 WebGL 1。
+素材就绪后，核心数字孪生无需后端、也无需联网。可选的自然语言控制台默认以 Demo 模式离线运行；Live 模式需要你自己的 API Key，且仅用于本地开发。必须使用 WebGL 2，不支持 WebGL 1。
 
 ## 快速开始
 
@@ -65,6 +65,13 @@ npx vite --port 5495 --strictPort
 | `?seed=<整数>` | 换一套事件排布（默认 7） |
 | `?quality=low` | 降低 DPR、阴影、AO 分辨率和帧缓冲精度 |
 | `?dpr=<数值>` | 固定设备像素比，例如 `?dpr=1` |
+| `?llm=demo\|live` | 本次会话强制控制台模式（Demo 无需 Key） |
+
+## 自然语言控制台（仅本地）
+
+右上角的对话气泡按钮会打开控制台。用日常英文下指令即可：派 AGV 去取发动机核心、查看实时数据、把镜头聚焦到某台设备、返回总览、调整仿真速度。常用的示例指令点一下就能填入。
+
+默认处于 **Demo** 模式，无需 Key、无需联网就能识别常见指令。想用真实模型驱动，打开设置齿轮，选择服务商（OpenAI、DeepSeek 或任意 OpenAI 兼容接口），填入自己的 API Key，再切到 **Live**。Key 只保存在你的浏览器里，仅经本地开发服务器转发，不会写进文件，也不会从线上演示站发出。该控制台是本地开发功能，不包含在 GitHub Pages 构建中。
 
 | 现象 | 处理 |
 | --- | --- |

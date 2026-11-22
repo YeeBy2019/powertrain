@@ -10,6 +10,7 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import { caseOffset, computeKpis, createSim, remainingPathPoints, stepSim, STEP_SECONDS } from './sim.js'
 import { buildWorld, composeMatrix, preloadAssets } from './world.js'
 import { CONVEYOR_TOP, EMPTY_STACK, OUTBOUND_DROP_Z, STAND_TOP } from './layout.js'
+import { mountChat } from './chat.js'
 
 // ---------- Loading screen ----------
 // The markup is static so the screen is visible before this module even executes.
@@ -397,6 +398,8 @@ canvas.addEventListener('pointermove', (event) => {
   canvas.classList.toggle('hovering', Boolean(pick(event.clientX, event.clientY)))
 })
 addEventListener('keydown', (event) => {
+  // Typing in the LLM console must not toggle the sim or fly the camera away.
+  if (event.target.closest('input, textarea, [contenteditable]')) return
   if (event.code === 'Space') {
     paused = !paused
     renderDock()
@@ -650,4 +653,51 @@ window.__app = {
     following = null
     flight = null
   },
+  // Natural-language console hooks. `focus` takes { kind, unit } where unit is
+  // a live sim object (or a 0-based row number for racks) and builds the same
+  // target shape that ray picking produces, so viewFor/renderCard work unchanged.
+  focus({ kind, unit }) {
+    let target = null
+    if (kind === 'forklift' && unit && typeof unit === 'object') {
+      target = { kind, unit }
+    } else if (kind === 'line') {
+      const line = sim.lines.find((item) => item.id === unit) ?? sim.lines.find((item) => item === unit)
+      if (line) target = { kind, unit: line, box: new THREE.Box3(
+        new THREE.Vector3(line.pickX - 1.5, 0, line.z - 1.5),
+        new THREE.Vector3(line.packX + 1.5, 3.4, line.z + 1.5)) }
+    } else if (kind === 'dock') {
+      const door = sim.outbound.find((item) => item.id === unit) ?? sim.outbound.find((item) => item === unit)
+      if (door) target = { kind, unit: door, box: new THREE.Box3(
+        new THREE.Vector3(door.x - 1.8, 0, -16.5),
+        new THREE.Vector3(door.x + 1.8, 4.5, OUTBOUND_DROP_Z + 1.2)) }
+    } else if (kind === 'inbound') {
+      const door = sim.inbound.find((item) => item.id === unit) ?? sim.inbound.find((item) => item === unit)
+      if (door) target = { kind, unit: door, box: new THREE.Box3(
+        new THREE.Vector3(-27, 0, door.z - 1.5),
+        new THREE.Vector3(-23.5, 4, door.z + 1.5)) }
+    } else if (kind === 'rack') {
+      const row = Number(unit)
+      const rowX = [-16, -6.93, 2.14][row]
+      if (rowX != null) target = { kind, unit: row, box: new THREE.Box3(
+        new THREE.Vector3(rowX - 1.1, 0, -6), new THREE.Vector3(rowX + 1.1, 6, 6)) }
+    }
+    if (!target) return false
+    selectTarget(target)
+    return true
+  },
+  home: showOverview,
+  pause() {
+    paused = true
+    renderDock()
+  },
+  resume() {
+    paused = false
+    renderDock()
+  },
+  getKpis: () => computeKpis(sim),
+  getPaused: () => paused,
 }
+
+// Mount the optional natural-language console after __app exists. Its module
+// only defines functions at top level, so the static import above is safe.
+mountChat({ app: window.__app, getSim: () => sim })
