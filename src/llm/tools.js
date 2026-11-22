@@ -1,5 +1,7 @@
 // Function definitions given to the LLM and the whitelist used to validate
 // whatever comes back. All arguments are strings/numbers — never sim references.
+import { createTranslator } from '../i18n/index.js'
+
 export const TOOLS = [
   {
     type: 'function',
@@ -72,6 +74,45 @@ three inbound doors (Door 1-3) and two dispatch doors (Door 4-5). Engine models 
 Always act by calling exactly one of the provided tools. Never invent a tool or a unit name.
 When you call a tool, leave the text response empty — the app prints the tool result itself.
 If the request cannot be mapped to a tool, reply briefly that you can only dispatch AGVs, report status, focus the camera, reset the view or change speed.`
+
+// Only descriptions are localized. Enum values stay in English so the command
+// layer never has to parse translated identifiers.
+const TOOL_TEXT = {
+  dispatch_agv_pickup: {
+    description: 'tool.dispatch.description',
+    params: { sku: 'tool.dispatch.sku', row: 'tool.dispatch.row', line: 'tool.dispatch.line' },
+  },
+  query_kpis: { description: 'tool.status.description', params: {} },
+  focus_unit: {
+    description: 'tool.focus.description',
+    params: { id: 'tool.focus.id' },
+  },
+  show_overview: { description: 'tool.overview.description', params: {} },
+  set_sim_speed: {
+    description: 'tool.speed.description',
+    params: { action: 'tool.speed.action', speed: 'tool.speed.speed' },
+  },
+}
+
+export function getSystemPrompt(locale) {
+  return createTranslator(locale)('llm.systemPrompt')
+}
+
+export function getTools(locale) {
+  const t = createTranslator(locale)
+  return TOOLS.map((tool) => {
+    const copy = JSON.parse(JSON.stringify(tool))
+    const text = TOOL_TEXT[copy.function.name]
+    if (!text) return copy
+    copy.function.description = t(text.description)
+    for (const [name, key] of Object.entries(text.params)) {
+      if (copy.function.parameters?.properties?.[name]) {
+        copy.function.parameters.properties[name].description = t(key)
+      }
+    }
+    return copy
+  })
+}
 
 const ALLOWED = new Set(TOOLS.map((tool) => tool.function.name))
 

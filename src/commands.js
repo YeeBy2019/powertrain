@@ -2,6 +2,7 @@
 // touches sim objects directly: it sends strings/numbers, this module resolves
 // them to real references and performs the write. No three.js, no DOM.
 import { computeKpis } from './sim.js'
+import { createTranslator } from './i18n/index.js'
 
 const SKU = { V8: 0, V6: 1, V12: 2, electric: 3 }
 const SKU_NAME = ['V8', 'V6', 'V12', 'electric']
@@ -41,10 +42,10 @@ function resolveForklift(sim, value) {
   return null
 }
 
-function dispatchPickup(sim, { sku, row, line }) {
+function dispatchPickup(sim, { sku, row, line }, t) {
   const skuIndex = resolveSku(sku)
   const lineObj = resolveLine(sim, line)
-  if (skuIndex == null || !lineObj) return { ok: false, message: 'I could not recognise that engine model or line. Try "V8" and "Line 1".' }
+  if (skuIndex == null || !lineObj) return { ok: false, message: t('cmd.pick.badArgs') }
 
   const inStock = (slot) => slot.pallet && !slot.reserved && slot.pallet.sku === skuIndex && slot.pallet.cases > 0
   let candidates = sim.slots.filter(inStock)
@@ -55,7 +56,7 @@ function dispatchPickup(sim, { sku, row, line }) {
     if (inRow.length) candidates = inRow
     else if (candidates.length) fromOtherRow = true
   }
-  if (!candidates.length) return { ok: false, message: `No ${SKU_NAME[skuIndex]} cores are available on the racks right now. Try another model.` }
+  if (!candidates.length) return { ok: false, message: t('cmd.pick.noStock', { sku: SKU_NAME[skuIndex] }) }
   candidates.sort((a, b) => b.pallet.cases - a.pallet.cases || a.level - b.level)
   const slot = candidates[0]
   const model = SKU_NAME[skuIndex]
@@ -75,7 +76,7 @@ function dispatchPickup(sim, { sku, row, line }) {
     }
     sim.orders.push(order)
     sim.pendingOrders.push(order)
-    return { ok: true, message: `${lineObj.id} is busy, so the ${model} pickup is queued and will depart as soon as it is free.` }
+    return { ok: true, message: t('cmd.pick.queued', { line: lineObj.id, sku: model }) }
   }
 
   const order = {
@@ -97,19 +98,26 @@ function dispatchPickup(sim, { sku, row, line }) {
   lineObj.packed = 0
   sim.tasks.push({ kind: 'retrieve', slot, line: lineObj, createdAt: sim.time })
 
-  const source = fromOtherRow ? ` (row ${slot.row + 1} instead — the requested row had none)` : ''
-  return { ok: true, message: `An AGV is heading to ${slot.label} for a ${model} core, then on to ${lineObj.id}.${source}` }
+  const source = fromOtherRow ? t('cmd.pick.otherRow', { row: slot.row + 1 }) : ''
+  return { ok: true, message: t('cmd.pick.ok', { slotLabel: slot.label, sku: model, line: lineObj.id, source }) }
 }
 
-function queryStatus(sim, app) {
+function queryStatus(sim, app, t) {
   const k = app.getKpis()
   return {
     ok: true,
-    message: `Running at about ${(k.ordersPerHour * 12).toFixed(0)} engines/hour. ${k.freeForklifts} of ${k.forkliftCount} AGVs are free, racks are ${Math.round(k.rackFillPercent)}% full, ${k.queuedOrders} orders queued and ${k.shippedTotal} engines shipped.`,
+    message: t('cmd.status', {
+      rate: (k.ordersPerHour * 12).toFixed(0),
+      free: k.freeForklifts,
+      total: k.forkliftCount,
+      fill: Math.round(k.rackFillPercent),
+      queued: k.queuedOrders,
+      shipped: k.shippedTotal,
+    }),
   }
 }
 
-function focusUnit(sim, app, { kind, id }) {
+function focusUnit(sim, app, { kind, id }, t) {
   const normalized = String(kind || '').toLowerCase()
   let unit = null
   let actualKind = normalized
@@ -120,40 +128,41 @@ function focusUnit(sim, app, { kind, id }) {
   } else if (normalized === 'rack') unit = resolveRackRow(id)
   else if (normalized === 'dock') unit = sim.outbound.find((d) => d.id.toLowerCase() === String(id).toLowerCase())?.id ?? null
   else if (normalized === 'inbound') unit = sim.inbound.find((d) => d.id.toLowerCase() === String(id).toLowerCase())?.id ?? null
-  if (unit == null || unit === false) return { ok: false, message: 'I could not find that unit. Try "FL-1", "Line 1", "Row 2" or "Door 4".' }
-  if (!app.focus({ kind: actualKind, unit })) return { ok: false, message: 'That unit is not focusable.' }
-  return { ok: true, message: `Camera is now following ${normalized === 'forklift' ? unit.id : normalized === 'rack' ? `parts row ${unit + 1}` : unit}.` }
+  if (unit == null || unit === false) return { ok: false, message: t('cmd.focus.notFound') }
+  if (!app.focus({ kind: actualKind, unit })) return { ok: false, message: t('cmd.focus.notFocusable') }
+  const label = normalized === 'forklift' ? unit.id : normalized === 'rack' ? t('cmd.focus.partsRow', { n: unit + 1 }) : unit
+  return { ok: true, message: t('cmd.focus.ok', { unit: label }) }
 }
 
-function setSpeed(app, { action, speed }) {
+function setSpeed(app, { action, speed }, t) {
   if (action === 'pause') {
     app.pause()
-    return { ok: true, message: 'Simulation paused.' }
+    return { ok: true, message: t('cmd.pause') }
   }
   if (action === 'resume') {
     app.resume()
-    return { ok: true, message: 'Simulation resumed.' }
+    return { ok: true, message: t('cmd.resume') }
   }
   const value = Number(speed)
-  if (![1, 2, 5, 10].includes(value)) return { ok: false, message: 'Speed must be 1x, 2x, 5x or 10x.' }
+  if (![1, 2, 5, 10].includes(value)) return { ok: false, message: t('cmd.speed.bad') }
   app.resume()
   app.setSpeed(value)
-  return { ok: true, message: `Simulation running at ${value}x.` }
+  return { ok: true, message: t('cmd.speed.ok', { value }) }
 }
 
-export function executeCommand({ app, sim, command }) {
-  if (!command || !command.name) return { ok: false, message: 'No command was received.' }
+export function executeCommand({ app, sim, command, t = createTranslator() }) {
+  if (!command || !command.name) return { ok: false, message: t('cmd.noCommand') }
   try {
     switch (command.name) {
-      case 'dispatch_agv_pickup': return dispatchPickup(sim, command.args ?? {})
-      case 'query_kpis': return queryStatus(sim, app)
-      case 'focus_unit': return focusUnit(sim, app, command.args ?? {})
-      case 'show_overview': app.home(); return { ok: true, message: 'Back to the hall overview.' }
-      case 'set_sim_speed': return setSpeed(app, command.args ?? {})
-      default: return { ok: false, message: `Unknown command: ${command.name}` }
+      case 'dispatch_agv_pickup': return dispatchPickup(sim, command.args ?? {}, t)
+      case 'query_kpis': return queryStatus(sim, app, t)
+      case 'focus_unit': return focusUnit(sim, app, command.args ?? {}, t)
+      case 'show_overview': app.home(); return { ok: true, message: t('cmd.overview') }
+      case 'set_sim_speed': return setSpeed(app, command.args ?? {}, t)
+      default: return { ok: false, message: t('cmd.unknown', { name: command.name }) }
     }
   } catch (error) {
-    return { ok: false, message: `That command failed: ${error.message}` }
+    return { ok: false, message: t('cmd.failed', { message: error.message }) }
   }
 }
 

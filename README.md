@@ -77,12 +77,20 @@ All URL options are optional:
 | `?quality=low` | lower DPR, shadow size, AO resolution and framebuffer precision |
 | `?dpr=<number>` | pin the device pixel ratio, e.g. `?dpr=1` |
 | `?llm=demo\|live` | force the console mode for this session (Demo needs no key) |
+| `?lang=en\|zh-CN` | force the interface language for this session (English is the default) |
+
+## Interface language
+
+The whole interface — loading screen, dashboard, status cards and control console — starts in **English**. Use the `EN` / `中` button at the top right to switch to Simplified Chinese; your choice is remembered on this device. Equipment IDs (`FL-1`, `Line 1`, `Row 2`) and the English floor markings stay unchanged.
+
+New console replies follow the selected language, in both Demo and Live modes. Messages already on screen keep the language they were written in. Add `?lang=zh-CN` to open a session in Chinese without changing the saved preference.
 
 ## Natural-language console (local only)
 
-The speech-bubble button in the top right opens a control console. Type plain English and the hall
-responds — dispatch an AGV for a core, ask for the live figures, focus the camera on a unit, return
-to the overview, or change the simulation speed. Built-in examples are one click away.
+The speech-bubble button in the top right opens a control console. Type in the active interface
+language and the hall responds — dispatch an AGV for a core, ask for the live figures, focus the
+camera on a unit, return to the overview, or change the simulation speed. Built-in examples are one
+click away.
 
 It starts in **Demo** mode, which needs no key or network and recognises the common commands. For
 real model-driven control, open the settings gear, choose a provider (OpenAI, DeepSeek, or any
@@ -200,6 +208,7 @@ powertrain/
     world.js                  GLB loading, flattening, instance pools, materials
     sim.js                    seeded fixed-step simulation (no DOM, no three.js)
     layout.js                 hall geometry, lanes and stations
+    i18n/                     interface language state and translations
     styles.css                steel-blue UI
   public/
     assets/                   60 SimReady GLBs (fetched, not hand-authored)

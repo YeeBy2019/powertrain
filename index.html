@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="data:," />
-    <title>Powertrain · Engine Assembly Digital Twin</title>
+    <title data-i18n="meta.title">Powertrain · Engine Assembly Digital Twin</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
@@ -14,30 +14,30 @@
           <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2l.2 1.1 1.4.6 1-.8a2 2 0 0 1 2.8 0l.8.8a2 2 0 0 1 0 2.8l-.8 1 .6 1.4L21 12a2 2 0 0 1 0 4l-1.1.2-.6 1.4.8 1a2 2 0 0 1 0 2.8l-.8.8a2 2 0 0 1-2.8 0l-1-.8-1.4.6L14 23a2 2 0 0 1-4 0l-.2-1.1-1.4-.6-1 .8a2 2 0 0 1-2.8 0l-.8-.8a2 2 0 0 1 0-2.8l.8-1-.6-1.4L3 16a2 2 0 0 1 0-4l1.1-.2.6-1.4-.8-1a2 2 0 0 1 0-2.8l.8-.8a2 2 0 0 1 2.8 0l1 .8 1.4-.6L12 2zm0 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" fill="currentColor" /></svg>
         </div>
         <h1 class="loader-title">POWERTRAIN</h1>
-        <p class="loader-subtitle">ENGINE ASSEMBLY DIGITAL TWIN</p>
+        <p class="loader-subtitle" data-i18n="loader.subtitle">ENGINE ASSEMBLY DIGITAL TWIN</p>
 
         <div class="loader-progress-head">
-          <span id="loader-phase">INITIALIZING</span>
+          <span id="loader-phase" data-i18n="loader.phase.loading">LOADING ASSETS</span>
           <span id="loader-percent">0%</span>
         </div>
         <div class="loader-track"><i id="loader-bar"></i></div>
 
         <div class="loader-stage-head">
-          <span id="loader-stage">Preparing assets</span>
+          <span id="loader-stage" data-i18n="loader.stage.preparing">Preparing assets</span>
           <span id="loader-count">0 / 34</span>
         </div>
         <div class="loader-track loader-track-thin"><i id="loader-stage-bar"></i></div>
 
         <ul class="loader-stages">
-          <li data-stage="environment"><span class="loader-dot"></span><span>Environment</span><span class="loader-num">0/4</span></li>
-          <li data-stage="structure"><span class="loader-dot"></span><span>Building shell</span><span class="loader-num">0/7</span></li>
-          <li data-stage="equipment"><span class="loader-dot"></span><span>Assembly equipment</span><span class="loader-num">0/13</span></li>
-          <li data-stage="logistics"><span class="loader-dot"></span><span>Logistics fleet</span><span class="loader-num">0/6</span></li>
-          <li data-stage="engines"><span class="loader-dot"></span><span>Engine cores</span><span class="loader-num">0/4</span></li>
-          <li data-stage="compile"><span class="loader-dot"></span><span>Compile shaders</span><span class="loader-num"></span></li>
+          <li data-stage="environment"><span class="loader-dot"></span><span data-i18n="loader.stage.environment">Environment</span><span class="loader-num">0/4</span></li>
+          <li data-stage="structure"><span class="loader-dot"></span><span data-i18n="loader.stage.structure">Building shell</span><span class="loader-num">0/7</span></li>
+          <li data-stage="equipment"><span class="loader-dot"></span><span data-i18n="loader.stage.equipment">Assembly equipment</span><span class="loader-num">0/13</span></li>
+          <li data-stage="logistics"><span class="loader-dot"></span><span data-i18n="loader.stage.logistics">Logistics fleet</span><span class="loader-num">0/6</span></li>
+          <li data-stage="engines"><span class="loader-dot"></span><span data-i18n="loader.stage.engines">Engine cores</span><span class="loader-num">0/4</span></li>
+          <li data-stage="compile"><span class="loader-dot"></span><span data-i18n="loader.stage.compile">Compile shaders</span><span class="loader-num"></span></li>
         </ul>
 
-        <p class="loader-item" id="loader-item">Starting&hellip;</p>
+        <p class="loader-item" id="loader-item" data-i18n="loader.item.starting">Starting&hellip;</p>
       </div>
     </div>
     <canvas id="world"></canvas>
@@ -49,12 +49,65 @@
     <section id="kpis"></section>
     <aside id="card" hidden></aside>
     <footer id="dock">
-      <button id="home" title="Overview (Esc)"></button>
-      <button id="pause" title="Pause (Space)"></button>
+      <button id="home" data-i18n-title="dock.home" title="Overview (Esc)"></button>
+      <button id="pause" data-i18n-title="dock.pause" title="Pause (Space)"></button>
       <div id="speeds"></div>
       <span id="clock"></span>
     </footer>
     <div id="chat-root"></div>
+    <script>
+      // Paint the loading screen in the active language before the app module loads.
+      (() => {
+        const KEY = 'powertrain.locale.v1'
+        const valid = (value) => (value === 'en' || value === 'zh-CN' ? value : null)
+        let locale = valid(new URLSearchParams(location.search).get('lang'))
+        if (!locale) {
+          try { locale = valid(JSON.parse(localStorage.getItem(KEY) || 'null')) } catch (error) { locale = null }
+        }
+        locale = locale || 'en'
+        document.documentElement.lang = locale
+        document.documentElement.dataset.locale = locale
+        window.__POWERTRAIN_LOCALE__ = locale
+
+        const dict = locale === 'zh-CN' ? {
+          'meta.title': 'Powertrain · 发动机装配数字孪生',
+          'loader.subtitle': '发动机装配数字孪生',
+          'loader.phase.loading': '正在加载资源',
+          'loader.stage.preparing': '正在准备资源',
+          'loader.stage.environment': '环境与地面',
+          'loader.stage.structure': '厂房结构',
+          'loader.stage.equipment': '装配设备',
+          'loader.stage.logistics': '物流车队',
+          'loader.stage.engines': '发动机核心',
+          'loader.stage.compile': '编译着色器',
+          'loader.item.starting': '正在启动…',
+          'dock.home': '总览（Esc）',
+          'dock.pause': '暂停（空格）',
+        } : {
+          'meta.title': 'Powertrain · Engine Assembly Digital Twin',
+          'loader.subtitle': 'ENGINE ASSEMBLY DIGITAL TWIN',
+          'loader.phase.loading': 'LOADING ASSETS',
+          'loader.stage.preparing': 'Preparing assets',
+          'loader.stage.environment': 'Environment',
+          'loader.stage.structure': 'Building shell',
+          'loader.stage.equipment': 'Assembly equipment',
+          'loader.stage.logistics': 'Logistics fleet',
+          'loader.stage.engines': 'Engine cores',
+          'loader.stage.compile': 'Compile shaders',
+          'loader.item.starting': 'Starting…',
+          'dock.home': 'Overview (Esc)',
+          'dock.pause': 'Pause (Space)',
+        }
+        document.querySelectorAll('[data-i18n]').forEach((node) => {
+          const text = dict[node.getAttribute('data-i18n')]
+          if (text != null) node.textContent = text
+        })
+        document.querySelectorAll('[data-i18n-title]').forEach((node) => {
+          const text = dict[node.getAttribute('data-i18n-title')]
+          if (text != null) node.title = text
+        })
+      })()
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
