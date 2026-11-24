@@ -99,7 +99,8 @@ function dispatchPickup(sim, { sku, row, line }, t) {
   sim.tasks.push({ kind: 'retrieve', slot, line: lineObj, createdAt: sim.time })
 
   const source = fromOtherRow ? t('cmd.pick.otherRow', { row: slot.row + 1 }) : ''
-  return { ok: true, message: t('cmd.pick.ok', { slotLabel: slot.label, sku: model, line: lineObj.id, source }) }
+  const slotLabel = t('cmd.pick.slot', { row: slot.row + 1, level: slot.level + 1 })
+  return { ok: true, message: t('cmd.pick.ok', { slotLabel, sku: model, line: lineObj.id, source }) }
 }
 
 function queryStatus(sim, app, t) {

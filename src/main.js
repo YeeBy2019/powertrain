@@ -162,10 +162,10 @@ composer.addPass(new EffectPass(
 
 // Shader compilation is the last visible pause on first load. Render one frame while the
 // loading screen still covers the canvas, so the first visible frame is already warm.
-showProgress({ key: 'compile', label: 'Compile shaders', loaded: 0, total: 0, overall: 0.99, item: '' })
+showProgress({ key: 'compile', label: t('loader.stage.compile'), loaded: 0, total: 0, overall: 0.99, item: '' })
 await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
 composer.render(0)
-showProgress({ key: 'ready', label: 'Ready', loaded: 1, total: 1, overall: 1, item: '' })
+showProgress({ key: 'ready', label: t('loader.stage.ready'), loaded: 1, total: 1, overall: 1, item: '' })
 loaderElement.classList.add('done')
 
 // ---------- Path lines ----------
