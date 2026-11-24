@@ -3,50 +3,52 @@
 import { askLLM } from './llm/client.js'
 import { executeCommand } from './commands.js'
 import { applyProvider, loadSettings, PROVIDERS, saveSettings } from './llm/settings.js'
+import { createTranslator, getLocale } from './i18n/index.js'
 
-const SUGGESTIONS = [
-  'Dispatch an AGV to pick a V8 core from Row 2 and take it to Line 1',
-  "What's the status?",
-  'Focus on FL-3',
-  'Back to overview',
+const getSuggestions = (t) => [
+  t('chat.suggest.1'),
+  t('chat.suggest.2'),
+  t('chat.suggest.3'),
+  t('chat.suggest.4'),
 ]
 
-export function mountChat({ app, getSim }) {
+export function mountChat({ app, getSim, getT = () => createTranslator(getLocale()), subscribe = () => () => {} }) {
   const root = document.getElementById('chat-root')
   if (!root) return
   let settings = loadSettings()
+  let t = getT()
   const history = []
 
   root.innerHTML = `
-    <button id="chat-launcher" type="button" aria-label="Open control console" title="Control console">
+    <button id="chat-launcher" type="button" aria-label="${t('chat.launchLabel')}" title="${t('chat.launchTitle')}">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-3 11H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
       <span class="chat-launch-dot"></span>
     </button>
-    <aside id="chat-panel" hidden aria-label="Control console">
+    <aside id="chat-panel" hidden aria-label="${t('chat.title')}">
       <header class="chat-head">
-        <div><strong>Control console</strong><span id="chat-mode" class="chat-mode">DEMO</span></div>
+        <div><strong>${t('chat.title')}</strong><span id="chat-mode" class="chat-mode">DEMO</span></div>
         <div class="chat-head-actions">
-          <button id="chat-gear" type="button" title="Settings" aria-label="Settings">&#9881;</button>
-          <button id="chat-close" type="button" title="Close" aria-label="Close">&#10005;</button>
+          <button id="chat-gear" type="button" title="${t('chat.settings')}" aria-label="${t('chat.settings')}">&#9881;</button>
+          <button id="chat-close" type="button" title="${t('chat.close')}" aria-label="${t('chat.close')}">&#10005;</button>
         </div>
       </header>
       <div id="chat-log" class="chat-log" role="log" aria-live="polite"></div>
       <div id="chat-suggestions" class="chat-suggestions"></div>
       <form id="chat-form" class="chat-form">
-        <input id="chat-input" type="text" autocomplete="off" spellcheck="false" placeholder="Ask the hall to do something\u2026" aria-label="Command" />
-        <button type="submit" title="Send" aria-label="Send">&#10148;</button>
+        <input id="chat-input" type="text" autocomplete="off" spellcheck="false" placeholder="${t('chat.placeholder')}" aria-label="${t('chat.command')}" />
+        <button type="submit" title="${t('chat.send')}" aria-label="${t('chat.send')}">&#10148;</button>
       </form>
       <form id="llm-settings" class="llm-settings" hidden>
-        <div class="llm-settings-title">Model connection</div>
-        <label><input type="radio" name="llm-mode" value="demo" /> Demo (offline, no key)</label>
-        <label><input type="radio" name="llm-mode" value="live" /> Live (your own API key)</label>
-        <label>Provider
-          <select id="llm-provider">${Object.entries(PROVIDERS).map(([id, p]) => `<option value="${id}">${p.label}</option>`).join('')}</select>
+        <div class="llm-settings-title">${t('chat.settingsTitle')}</div>
+        <label><input type="radio" name="llm-mode" value="demo" /> ${t('chat.option.demo')}</label>
+        <label><input type="radio" name="llm-mode" value="live" /> ${t('chat.option.live')}</label>
+        <label>${t('chat.provider')}
+          <select id="llm-provider">${Object.entries(PROVIDERS).map(([id, p]) => `<option value="${id}">${id === 'custom' ? t('provider.custom') : p.label}</option>`).join('')}</select>
         </label>
-        <label>Base URL <input id="llm-base" type="text" spellcheck="false" /></label>
-        <label>Model <input id="llm-model" type="text" spellcheck="false" /></label>
-        <label>API key <input id="llm-key" type="password" autocomplete="off" placeholder="sk-\u2026" /></label>
-        <div class="llm-settings-foot"><span class="llm-note">Key stays in this browser and is used only by the local dev server.</span><button type="submit">Save</button></div>
+        <label>${t('chat.baseUrl')} <input id="llm-base" type="text" spellcheck="false" /></label>
+        <label>${t('chat.model')} <input id="llm-model" type="text" spellcheck="false" /></label>
+        <label>${t('chat.apiKey')} <input id="llm-key" type="password" autocomplete="off" placeholder="sk-\u2026" /></label>
+        <div class="llm-settings-foot"><span class="llm-note">${t('chat.keyNote')}</span><button type="submit">${t('chat.save')}</button></div>
       </form>
     </aside>`
 
@@ -58,6 +60,7 @@ export function mountChat({ app, getSim }) {
   const suggestions = root.querySelector('#chat-suggestions')
   const form = root.querySelector('#chat-form')
   const input = root.querySelector('#chat-input')
+  const sendButton = form.querySelector('button[type="submit"]')
   const modeBadge = root.querySelector('#chat-mode')
   const settingsForm = root.querySelector('#llm-settings')
 
@@ -93,7 +96,7 @@ export function mountChat({ app, getSim }) {
 
   function renderSuggestions() {
     suggestions.innerHTML = ''
-    for (const text of SUGGESTIONS) {
+    for (const text of getSuggestions(t)) {
       const button = document.createElement('button')
       button.type = 'button'
       button.textContent = text
@@ -103,6 +106,33 @@ export function mountChat({ app, getSim }) {
       })
       suggestions.appendChild(button)
     }
+  }
+
+  function applyStaticText() {
+    launcher.setAttribute('aria-label', t('chat.launchLabel'))
+    launcher.title = t('chat.launchTitle')
+    panel.setAttribute('aria-label', t('chat.title'))
+    root.querySelector('.chat-head strong').textContent = t('chat.title')
+    gearButton.title = t('chat.settings')
+    gearButton.setAttribute('aria-label', t('chat.settings'))
+    closeButton.title = t('chat.close')
+    closeButton.setAttribute('aria-label', t('chat.close'))
+    input.placeholder = t('chat.placeholder')
+    input.setAttribute('aria-label', t('chat.command'))
+    sendButton.title = t('chat.send')
+    sendButton.setAttribute('aria-label', t('chat.send'))
+    settingsForm.querySelector('.llm-settings-title').textContent = t('chat.settingsTitle')
+    settingsForm.querySelector('input[value="demo"]').nextSibling.textContent = ` ${t('chat.option.demo')}`
+    settingsForm.querySelector('input[value="live"]').nextSibling.textContent = ` ${t('chat.option.live')}`
+    const labels = settingsForm.querySelectorAll(':scope > label')
+    labels[2].firstChild.textContent = `${t('chat.provider')} `
+    labels[3].firstChild.textContent = `${t('chat.baseUrl')} `
+    labels[4].firstChild.textContent = `${t('chat.model')} `
+    labels[5].firstChild.textContent = `${t('chat.apiKey')} `
+    settingsForm.querySelector('.llm-note').textContent = t('chat.keyNote')
+    settingsForm.querySelector('button[type="submit"]').textContent = t('chat.save')
+    settingsForm.querySelector('#llm-provider option[value="custom"]').textContent = t('provider.custom')
+    renderSuggestions()
   }
 
   function fillSettingsForm() {
@@ -130,30 +160,30 @@ export function mountChat({ app, getSim }) {
 
   async function submit(text) {
     const command = String(text || '').trim()
-    if (!command) return { ok: false, message: 'Empty command' }
+    if (!command) return { ok: false, message: t('chat.empty') }
     addMessage('user', command)
     input.value = ''
-    const thinking = addMessage('assistant thinking', 'Thinking\u2026')
+    const thinking = addMessage('assistant thinking', t('chat.thinking'))
     history.push({ role: 'user', content: command })
 
     let result
     try {
-      const answer = await askLLM({ text: command, history, settings })
+      const answer = await askLLM({ text: command, history, settings, locale: getLocale(), t, signal: undefined })
       history.push({ role: 'assistant', content: [answer.content, ...answer.toolCalls.map((call) => call.name)].join(' ') })
-      const outcomes = answer.toolCalls.map((call) => executeCommand({ app, sim: getSim(), command: call }))
+      const outcomes = answer.toolCalls.map((call) => executeCommand({ app, sim: getSim(), command: call, t }))
       const failed = outcomes.find((item) => !item.ok)
       const spoken = answer.content || ''
       const report = outcomes.map((item) => item.message).filter(Boolean).join(' ')
       // The tool result is already phrased as a confirmation. Prefer it over a
       // second generated sentence so the chat never says the same thing twice.
-      const message = report || spoken || (failed ? failed.message : 'Done.')
+      const message = report || spoken || (failed ? failed.message : t('chat.done'))
       result = { ok: !failed, message, content: answer.content, outcomes, mode: answer.mode }
       thinking.className = 'chat-msg assistant'
       thinking.textContent = message
     } catch (error) {
-      result = { ok: false, message: error.message }
+      result = { ok: false, message: t('chat.errorPrefix', { message: error.message }) }
       thinking.className = 'chat-msg assistant error'
-      thinking.textContent = `Error: ${error.message}`
+      thinking.textContent = result.message
     }
     scrollDown()
     if (app.ticket) app.ticket()
@@ -179,7 +209,8 @@ export function mountChat({ app, getSim }) {
     event.preventDefault()
     syncSettingsFromForm()
     settingsForm.hidden = true
-    addMessage('system', `Switched to ${settings.mode === 'live' ? 'live model' : 'offline demo'} mode.`)
+    const mode = settings.mode === 'live' ? t('chat.mode.liveLabel') : t('chat.mode.demoLabel')
+    addMessage('system', t('chat.mode.switched', { mode }))
   })
   settingsForm.addEventListener('keydown', (event) => event.stopPropagation())
   settingsForm.querySelector('#llm-provider').addEventListener('change', (event) => {
@@ -188,9 +219,16 @@ export function mountChat({ app, getSim }) {
     settingsForm.querySelector('#llm-model').value = settings.model
   })
 
+  subscribe((nextT) => {
+    t = nextT
+    applyStaticText()
+    // Keep every bubble on screen; only drop the language-mixed model context.
+    history.length = 0
+  })
+
   setModeBadge()
   renderSuggestions()
-  addMessage('assistant', 'Hello. I can dispatch AGVs, report status, focus the camera, reset the view or change speed. Ask me anything in plain English.')
+  addMessage('assistant', t('chat.welcome'))
 
   app.llm = {
     open,

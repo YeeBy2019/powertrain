@@ -11,6 +11,7 @@ import { caseOffset, computeKpis, createSim, remainingPathPoints, stepSim, STEP_
 import { buildWorld, composeMatrix, preloadAssets } from './world.js'
 import { CONVEYOR_TOP, EMPTY_STACK, OUTBOUND_DROP_Z, STAND_TOP } from './layout.js'
 import { mountChat } from './chat.js'
+import { applyStaticI18n, createTranslator, getLocale, installLanguageToggle, setLocale, subscribe, tState } from './i18n/index.js'
 
 // ---------- Loading screen ----------
 // The markup is static so the screen is visible before this module even executes.
@@ -26,14 +27,18 @@ const loaderRows = new Map([...document.querySelectorAll('.loader-stages li')].m
 const STAGE_KEYS = ['environment', 'structure', 'equipment', 'logistics', 'engines', 'compile']
 let stageIndex = -1
 
+let t = createTranslator(getLocale())
+installLanguageToggle()
+applyStaticI18n(document, t)
+
 function showProgress({ key, label, loaded, total, overall, item }) {
-  loaderPhase.textContent = key === 'ready' ? 'FINALIZING' : 'LOADING ASSETS'
+  loaderPhase.textContent = key === 'ready' ? t('loader.phase.finalizing') : t('loader.phase.loading')
   loaderPercent.textContent = `${Math.round(overall * 100)}%`
   loaderBar.style.width = `${overall * 100}%`
-  loaderStage.textContent = label
+  loaderStage.textContent = t(`loader.stage.${key}`) === `loader.stage.${key}` ? label : t(`loader.stage.${key}`)
   loaderCount.textContent = total ? `${loaded} / ${total}` : ''
   loaderStageBar.style.width = total ? `${(loaded / total) * 100}%` : '0%'
-  loaderItem.textContent = item ? `Loading ${item}` : key === 'compile' ? 'Compiling shader variants\u2026' : 'Transferring\u2026'
+  loaderItem.textContent = item ? t('loader.item.loading', { item }) : key === 'compile' ? t('loader.item.compiling') : t('loader.item.transferring')
   const index = STAGE_KEYS.indexOf(key)
   if (index > stageIndex) stageIndex = index
   STAGE_KEYS.forEach((stageKey, position) => {
@@ -157,10 +162,10 @@ composer.addPass(new EffectPass(
 
 // Shader compilation is the last visible pause on first load. Render one frame while the
 // loading screen still covers the canvas, so the first visible frame is already warm.
-showProgress({ key: 'compile', label: 'Compile shaders', loaded: 0, total: 0, overall: 0.99, item: '' })
+showProgress({ key: 'compile', label: t('loader.stage.compile'), loaded: 0, total: 0, overall: 0.99, item: '' })
 await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
 composer.render(0)
-showProgress({ key: 'ready', label: 'Ready', loaded: 1, total: 1, overall: 1, item: '' })
+showProgress({ key: 'ready', label: t('loader.stage.ready'), loaded: 1, total: 1, overall: 1, item: '' })
 loaderElement.classList.add('done')
 
 // ---------- Path lines ----------
@@ -255,38 +260,47 @@ function renderCard() {
     return
   }
   cardElement.hidden = false
+  const locale = getLocale()
+  const batchState = (state) => {
+    const key = `order.${state}`
+    const translated = t(key)
+    return translated === key ? state : translated
+  }
   if (selected.kind === 'forklift') {
     const forklift = selected.unit
-    const job = forklift.pallet ? `${forklift.pallet.cases} engine cores on the AGV` : 'Forks empty'
-    cardElement.innerHTML = `<h2>AGV ${forklift.id}</h2>${iconRow(forklift.state, forklift.stateLabel)}
-      <dl><dt>Load</dt><dd>${job}</dd>
-      <dt>Fork height</dt><dd>${(forklift.lift + 0.18).toFixed(1)} m</dd>
-      <dt>Speed</dt><dd>${forklift.speed.toFixed(1)} m/s</dd>
-      <dt>Loads moved</dt><dd>${forklift.moves}</dd></dl>`
+    const job = forklift.pallet ? t('card.agv.load', { n: forklift.pallet.cases }) : t('card.agv.empty')
+    cardElement.innerHTML = `<h2>AGV ${forklift.id}</h2>${iconRow(forklift.state, tState(forklift.stateLabel, locale))}
+      <dl><dt>${t('card.agv.loadLabel')}</dt><dd>${job}</dd>
+      <dt>${t('card.agv.forkHeight')}</dt><dd>${(forklift.lift + 0.18).toFixed(1)} m</dd>
+      <dt>${t('card.agv.speed')}</dt><dd>${forklift.speed.toFixed(1)} m/s</dd>
+      <dt>${t('card.agv.loadsMoved')}</dt><dd>${forklift.moves}</dd></dl>`
   } else if (selected.kind === 'line') {
     const line = selected.unit
     const state = lineState(line)
     const order = line.order
-    const text = state === 'fault' ? `Line stoppage, clearing in ${Math.ceil(line.jammedUntil - sim.time)} s` : order ? `Batch ${order.id} is ${order.state}` : 'Waiting for the next batch'
+    const text = state === 'fault'
+      ? t('card.line.fault', { n: Math.ceil(line.jammedUntil - sim.time) })
+      : order ? t('card.line.batch', { id: order.id, state: batchState(order.state) }) : t('card.line.waiting')
     const progress = order ? (line.packed / order.cases) * 100 : 0
     cardElement.innerHTML = `<h2>${line.id}</h2>${iconRow(state, text)}
-      <dl><dt>Engines on the line</dt><dd>${line.conveyorCases.length}</dd>
-      <dt>Cores fitted for this batch</dt><dd>${order ? `${line.picked} of ${order.cases}` : 'None'}</dd>
-      <dt>Engines tested for this batch</dt><dd>${order ? `${line.packed} of ${order.cases}` : 'None'}</dd></dl>
+      <dl><dt>${t('card.line.enginesOnLine')}</dt><dd>${line.conveyorCases.length}</dd>
+      <dt>${t('card.line.coresFitted')}</dt><dd>${order ? `${line.picked} ${t('card.line.of')} ${order.cases}` : t('card.line.none')}</dd>
+      <dt>${t('card.line.enginesTested')}</dt><dd>${order ? `${line.packed} ${t('card.line.of')} ${order.cases}` : t('card.line.none')}</dd></dl>
       <div class="bar"><i style="width:${progress.toFixed(0)}%"></i></div>`
   } else if (selected.kind === 'dock') {
     const door = selected.unit
-    cardElement.innerHTML = `<h2>${door.id}, dispatch</h2>${iconRow(door.state === 'loading' ? 'running' : 'waiting', door.state === 'loading' ? 'Carrier at the door, loading' : 'Swapping the carrier')}
-      <dl><dt>Engines in this carrier</dt><dd>${door.loaded} of 10</dd><dt>Carriers sent</dt><dd>${door.trailersSent}</dd></dl>
+    const status = door.state === 'loading' ? t('card.dock.loading') : t('card.dock.swapping')
+    cardElement.innerHTML = `<h2>${t('card.dock.title', { id: door.id })}</h2>${iconRow(door.state === 'loading' ? 'running' : 'waiting', status)}
+      <dl><dt>${t('card.dock.enginesInCarrier')}</dt><dd>${door.loaded} ${t('card.line.of')} 10</dd><dt>${t('card.dock.carriersSent')}</dt><dd>${door.trailersSent}</dd></dl>
       <div class="bar"><i style="width:${door.loaded * 10}%"></i></div>`
   } else if (selected.kind === 'inbound') {
     const door = selected.unit
-    cardElement.innerHTML = `<h2>${door.id}, parts inbound</h2>${iconRow('running', `${door.pallets.length} parts pallets on the conveyor`)}
-      <dl><dt>Parts pallets received</dt><dd>${door.received}</dd></dl>`
+    cardElement.innerHTML = `<h2>${t('card.inbound.title', { id: door.id })}</h2>${iconRow('running', t('card.inbound.palletsOnConveyor', { n: door.pallets.length }))}
+      <dl><dt>${t('card.inbound.palletsReceived')}</dt><dd>${door.received}</dd></dl>`
   } else if (selected.kind === 'rack') {
     const rowSlots = sim.slots.filter((slot) => slot.row === selected.unit)
     const full = rowSlots.filter((slot) => slot.pallet).length
-    cardElement.innerHTML = `<h2>Parts store row ${selected.unit + 1}</h2>${iconRow('running', `${full} of ${rowSlots.length} bins hold parts`)}
+    cardElement.innerHTML = `<h2>${t('card.rack.title', { n: selected.unit + 1 })}</h2>${iconRow('running', t('card.rack.bins', { full, total: rowSlots.length }))}
       <div class="bar"><i style="width:${(full / rowSlots.length) * 100}%"></i></div>`
   }
 }
@@ -435,6 +449,7 @@ pauseElement.addEventListener('click', () => {
 
 function renderDock() {
   pauseElement.innerHTML = paused ? ICONS.running : ICONS.waiting
+  pauseElement.title = paused ? t('dock.resume') : t('dock.pause')
   for (const button of speedsElement.children) button.classList.toggle('on', Number(button.dataset.speed) === simSpeed && !paused)
 }
 renderDock()
@@ -442,10 +457,10 @@ renderDock()
 function renderKpis() {
   const kpis = computeKpis(sim)
   const entries = [
-    ['Engines per hour', (kpis.ordersPerHour * 12).toFixed(0), ''],
-    ['Core to dispatch', kpis.orderToShipMinutes.toFixed(1), 'min'],
-    ['Parts bin fill', kpis.rackFillPercent.toFixed(0), '%'],
-    ['Free AGVs', kpis.freeForklifts, `of ${kpis.forkliftCount}`],
+    [t('kpi.enginesPerHour'), (kpis.ordersPerHour * 12).toFixed(0), ''],
+    [t('kpi.coreToDispatch'), kpis.orderToShipMinutes.toFixed(1), 'min'],
+    [t('kpi.partsBinFill'), kpis.rackFillPercent.toFixed(0), '%'],
+    [t('kpi.freeAgvs'), kpis.freeForklifts, t('kpi.of', { n: kpis.forkliftCount })],
   ]
   document.getElementById('kpis').innerHTML = entries.map(([label, value, unit]) => `<div class="kpi"><label>${label}</label><strong>${value}<small>${unit}</small></strong></div>`).join('')
   const totalMinutes = Math.floor(sim.time / 60) + 8 * 60
@@ -696,8 +711,21 @@ window.__app = {
   },
   getKpis: () => computeKpis(sim),
   getPaused: () => paused,
+  setLocale,
+  getLocale,
+  getT: () => t,
 }
+
+// Re-render every dynamic surface when the language changes. Chat bubbles are
+// intentionally untouched; chat.js only clears its own model history.
+subscribe((nextT) => {
+  t = nextT
+  applyStaticI18n(document, t)
+  renderDock()
+  renderKpis()
+  renderCard()
+})
 
 // Mount the optional natural-language console after __app exists. Its module
 // only defines functions at top level, so the static import above is safe.
-mountChat({ app: window.__app, getSim: () => sim })
+mountChat({ app: window.__app, getSim: () => sim, getT: () => t, subscribe })
